@@ -1,0 +1,765 @@
+{
+  "info": {
+    "name": "Student Records API - SQE",
+    "description": "22 ordered requests with automated assertions. Uses fictional data. Run TC01 to TC22. TC02 generates a unique roll number and captures the new ID; TC18 deletes that record only. Existing records are not cleared. Do not define environment variables named baseUrl, studentId or rollNo, because they override collection values. Actual Postman evidence must be captured by the student.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://127.0.0.1:5000",
+      "type": "string"
+    },
+    {
+      "key": "studentId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "rollNo",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "TC01 - Health check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/health",
+        "description": "Database connected; status ok. Run requests in numbered order. Capture your own evidence."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "(function () {",
+              "pm.test(\"TC01: status is 200\", function () { pm.response.to.have.status(200); });",
+              "pm.test(\"Response is JSON\", function () { pm.expect(pm.response.headers.get(\"Content-Type\").includes(\"application/json\")).to.equal(true); });",
+              "const apiPayload = pm.response.json();",
+              "pm.test(\"Database is connected\", function () { pm.expect(apiPayload).to.eql({status:\"ok\", database:\"connected\"}); });",
+              "})();"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "TC02 - Create valid student",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/students",
+        "description": "Record created with unique ID; database gains one row. Run requests in numbered order. Capture your own evidence.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Ali Ahmed\",\n  \"rollNo\": \"{{rollNo}}\",\n  \"department\": \"Software Engineering\",\n  \"semester\": 1\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.collectionVariables.unset(\"studentId\");",
+              "pm.collectionVariables.set(\"rollNo\", \"PM\" + Date.now() + Math.floor(Math.random()*10000).toString().padStart(4,\"0\"));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "(function () {",
+              "pm.test(\"TC02: status is 201\", function () { pm.response.to.have.status(201); });",
+              "pm.test(\"Response is JSON\", function () { pm.expect(pm.response.headers.get(\"Content-Type\").includes(\"application/json\")).to.equal(true); });",
+              "const apiPayload = pm.response.json();",
+              "pm.test(\"Created record is correct\", function () { pm.expect(apiPayload.name).to.equal(\"Ali Ahmed\"); pm.expect(apiPayload.rollNo).to.equal(pm.collectionVariables.get(\"rollNo\")); pm.expect(apiPayload.department).to.equal(\"Software Engineering\"); pm.expect(apiPayload.semester).to.equal(1); pm.expect(Number.isInteger(apiPayload.id) && apiPayload.id > 0).to.equal(true); });",
+              "if (pm.response.code === 201 && Number.isInteger(apiPayload.id)) { pm.collectionVariables.set(\"studentId\", String(apiPayload.id)); }",
+              "})();"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "TC03 - Read all students",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/students",
+        "description": "JSON array contains the created student. Run requests in numbered order. Capture your own evidence."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "(function () {",
+              "pm.test(\"TC03: status is 200\", function () { pm.response.to.have.status(200); });",
+              "pm.test(\"Response is JSON\", function () { pm.expect(pm.response.headers.get(\"Content-Type\").includes(\"application/json\")).to.equal(true); });",
+              "const apiPayload = pm.response.json();",
+              "pm.test(\"List includes created student\", function () { pm.expect(Array.isArray(apiPayload)).to.equal(true); pm.expect(apiPayload.some(s => s.id === Number(pm.collectionVariables.get(\"studentId\")) && s.rollNo === pm.collectionVariables.get(\"rollNo\"))).to.equal(true); });",
+              "})();"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "TC04 - Read one student",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/students/{{studentId}}",
+        "description": "The created record is returned. Run requests in numbered order. Capture your own evidence."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "(function () {",
+              "pm.test(\"TC04: status is 200\", function () { pm.response.to.have.status(200); });",
+              "pm.test(\"Response is JSON\", function () { pm.expect(pm.response.headers.get(\"Content-Type\").includes(\"application/json\")).to.equal(true); });",
+              "const apiPayload = pm.response.json();",
+              "pm.test(\"Correct student returned\", function () { pm.expect(apiPayload.id).to.equal(Number(pm.collectionVariables.get(\"studentId\"))); pm.expect(apiPayload.rollNo).to.equal(pm.collectionVariables.get(\"rollNo\")); pm.expect(apiPayload.semester).to.equal(1); });",
+              "})();"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "TC05 - Reject duplicate roll number",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/students",
+        "description": "Conflict; no extra record inserted. Run requests in numbered order. Capture your own evidence.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Ali Ahmed\",\n  \"rollNo\": \"{{rollNo}}\",\n  \"department\": \"Software Engineering\",\n  \"semester\": 1\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "(function () {",
+              "pm.test(\"TC05: status is 409\", function () { pm.response.to.have.status(409); });",
+              "pm.test(\"Response is JSON\", function () { pm.expect(pm.response.headers.get(\"Content-Type\").includes(\"application/json\")).to.equal(true); });",
+              "const apiPayload = pm.response.json();",
+              "pm.test(\"Error message is present\", function () { pm.expect(typeof apiPayload.error).to.equal(\"string\"); pm.expect(apiPayload.error.length > 0).to.equal(true); });",
+              "})();"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "TC06 - Reject missing fields",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/students",
+        "description": "Validation details identify missing rollNo, department and semester. Run requests in numbered order. Capture your own evidence.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Ali Ahmed\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "(function () {",
+              "pm.test(\"TC06: status is 400\", function () { pm.response.to.have.status(400); });",
+              "pm.test(\"Response is JSON\", function () { pm.expect(pm.response.headers.get(\"Content-Type\").includes(\"application/json\")).to.equal(true); });",
+              "const apiPayload = pm.response.json();",
+              "pm.test(\"Error message is present\", function () { pm.expect(typeof apiPayload.error).to.equal(\"string\"); pm.expect(apiPayload.error.length > 0).to.equal(true); });",
+              "pm.test(\"Required fields identified\", function () { pm.expect(Object.keys(apiPayload.details).sort()).to.eql([\"department\",\"rollNo\",\"semester\"]); });",
+              "})();"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "TC07 - Reject semester outside range",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/students",
+        "description": "Semester 9 rejected; no row inserted. Run requests in numbered order. Capture your own evidence.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Ali Ahmed\",\n  \"rollNo\": \"{{rollNo}}\",\n  \"department\": \"Software Engineering\",\n  \"semester\": 9\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "(function () {",
+              "pm.test(\"TC07: status is 400\", function () { pm.response.to.have.status(400); });",
+              "pm.test(\"Response is JSON\", function () { pm.expect(pm.response.headers.get(\"Content-Type\").includes(\"application/json\")).to.equal(true); });",
+              "const apiPayload = pm.response.json();",
+              "pm.test(\"Error message is present\", function () { pm.expect(typeof apiPayload.error).to.equal(\"string\"); pm.expect(apiPayload.error.length > 0).to.equal(true); });",
+              "pm.test(\"Semester error is present\", function () { pm.expect(typeof apiPayload.details.semester).to.equal(\"string\"); });",
+              "})();"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "TC08 - Reject blank name",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/students",
+        "description": "Blank name rejected. Run requests in numbered order. Capture your own evidence.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"   \",\n  \"rollNo\": \"{{rollNo}}\",\n  \"department\": \"Software Engineering\",\n  \"semester\": 1\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "(function () {",
+              "pm.test(\"TC08: status is 400\", function () { pm.response.to.have.status(400); });",
+              "pm.test(\"Response is JSON\", function () { pm.expect(pm.response.headers.get(\"Content-Type\").includes(\"application/json\")).to.equal(true); });",
+              "const apiPayload = pm.response.json();",
+              "pm.test(\"Error message is present\", function () { pm.expect(typeof apiPayload.error).to.equal(\"string\"); pm.expect(apiPayload.error.length > 0).to.equal(true); });",
+              "})();"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "TC09 - Get nonexistent student",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/students/9223372036854775807",
+        "description": "No record exists for this reserved test ID. Run requests in numbered order. Capture your own evidence."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "(function () {",
+              "pm.test(\"TC09: status is 404\", function () { pm.response.to.have.status(404); });",
+              "pm.test(\"Response is JSON\", function () { pm.expect(pm.response.headers.get(\"Content-Type\").includes(\"application/json\")).to.equal(true); });",
+              "const apiPayload = pm.response.json();",
+              "pm.test(\"Error message is present\", function () { pm.expect(typeof apiPayload.error).to.equal(\"string\"); pm.expect(apiPayload.error.length > 0).to.equal(true); });",
+              "})();"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "TC10 - Reject malformed ID",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/students/abc",
+        "description": "ID format rejected; JSON error returned. Run requests in numbered order. Capture your own evidence."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "(function () {",
+              "pm.test(\"TC10: status is 400\", function () { pm.response.to.have.status(400); });",
+              "pm.test(\"Response is JSON\", function () { pm.expect(pm.response.headers.get(\"Content-Type\").includes(\"application/json\")).to.equal(true); });",
+              "const apiPayload = pm.response.json();",
+              "pm.test(\"Error message is present\", function () { pm.expect(typeof apiPayload.error).to.equal(\"string\"); pm.expect(apiPayload.error.length > 0).to.equal(true); });",
+              "})();"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "TC11 - Update student",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/students/{{studentId}}",
+        "description": "Semester changes to 2 in response and database. Run requests in numbered order. Capture your own evidence.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Ali Ahmed\",\n  \"rollNo\": \"{{rollNo}}\",\n  \"department\": \"Software Engineering\",\n  \"semester\": 2\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "(function () {",
+              "pm.test(\"TC11: status is 200\", function () { pm.response.to.have.status(200); });",
+              "pm.test(\"Response is JSON\", function () { pm.expect(pm.response.headers.get(\"Content-Type\").includes(\"application/json\")).to.equal(true); });",
+              "const apiPayload = pm.response.json();",
+              "pm.test(\"Update retains ID and changes semester\", function () { pm.expect(apiPayload.id).to.equal(Number(pm.collectionVariables.get(\"studentId\"))); pm.expect(apiPayload.semester).to.equal(2); });",
+              "})();"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "TC12 - Read after update",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/students/{{studentId}}",
+        "description": "Stored semester is 2. Run requests in numbered order. Capture your own evidence."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "(function () {",
+              "pm.test(\"TC12: status is 200\", function () { pm.response.to.have.status(200); });",
+              "pm.test(\"Response is JSON\", function () { pm.expect(pm.response.headers.get(\"Content-Type\").includes(\"application/json\")).to.equal(true); });",
+              "const apiPayload = pm.response.json();",
+              "pm.test(\"Update persisted\", function () { pm.expect(apiPayload.semester).to.equal(2); pm.expect(apiPayload.rollNo).to.equal(pm.collectionVariables.get(\"rollNo\")); });",
+              "})();"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "TC13 - Reject invalid update",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/students/{{studentId}}",
+        "description": "Semester 0 rejected; existing data unchanged. Run requests in numbered order. Capture your own evidence.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Ali Ahmed\",\n  \"rollNo\": \"{{rollNo}}\",\n  \"department\": \"Software Engineering\",\n  \"semester\": 0\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "(function () {",
+              "pm.test(\"TC13: status is 400\", function () { pm.response.to.have.status(400); });",
+              "pm.test(\"Response is JSON\", function () { pm.expect(pm.response.headers.get(\"Content-Type\").includes(\"application/json\")).to.equal(true); });",
+              "const apiPayload = pm.response.json();",
+              "pm.test(\"Error message is present\", function () { pm.expect(typeof apiPayload.error).to.equal(\"string\"); pm.expect(apiPayload.error.length > 0).to.equal(true); });",
+              "})();"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "TC14 - Check record after rejected update",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/students/{{studentId}}",
+        "description": "Semester is still 2. Run requests in numbered order. Capture your own evidence."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "(function () {",
+              "pm.test(\"TC14: status is 200\", function () { pm.response.to.have.status(200); });",
+              "pm.test(\"Response is JSON\", function () { pm.expect(pm.response.headers.get(\"Content-Type\").includes(\"application/json\")).to.equal(true); });",
+              "const apiPayload = pm.response.json();",
+              "pm.test(\"Rejected update did not change record\", function () { pm.expect(apiPayload.semester).to.equal(2); });",
+              "})();"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "TC15 - Reject broken JSON",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/students",
+        "description": "Invalid JSON syntax rejected. Run requests in numbered order. Capture your own evidence.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"name\": \"Ali\",",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "(function () {",
+              "pm.test(\"TC15: status is 400\", function () { pm.response.to.have.status(400); });",
+              "pm.test(\"Response is JSON\", function () { pm.expect(pm.response.headers.get(\"Content-Type\").includes(\"application/json\")).to.equal(true); });",
+              "const apiPayload = pm.response.json();",
+              "pm.test(\"Error message is present\", function () { pm.expect(typeof apiPayload.error).to.equal(\"string\"); pm.expect(apiPayload.error.length > 0).to.equal(true); });",
+              "})();"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "TC16 - Reject wrong content type",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "text/plain"
+          }
+        ],
+        "url": "{{baseUrl}}/api/students",
+        "description": "text/plain body rejected. Run requests in numbered order. Capture your own evidence.",
+        "body": {
+          "mode": "raw",
+          "raw": "hello",
+          "options": {
+            "raw": {
+              "language": "text"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "(function () {",
+              "pm.test(\"TC16: status is 415\", function () { pm.response.to.have.status(415); });",
+              "pm.test(\"Response is JSON\", function () { pm.expect(pm.response.headers.get(\"Content-Type\").includes(\"application/json\")).to.equal(true); });",
+              "const apiPayload = pm.response.json();",
+              "pm.test(\"Error message is present\", function () { pm.expect(typeof apiPayload.error).to.equal(\"string\"); pm.expect(apiPayload.error.length > 0).to.equal(true); });",
+              "})();"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "TC17 - Reject JSON array body",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/students",
+        "description": "Body must be a JSON object. Run requests in numbered order. Capture your own evidence.",
+        "body": {
+          "mode": "raw",
+          "raw": "[]",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "(function () {",
+              "pm.test(\"TC17: status is 400\", function () { pm.response.to.have.status(400); });",
+              "pm.test(\"Response is JSON\", function () { pm.expect(pm.response.headers.get(\"Content-Type\").includes(\"application/json\")).to.equal(true); });",
+              "const apiPayload = pm.response.json();",
+              "pm.test(\"Error message is present\", function () { pm.expect(typeof apiPayload.error).to.equal(\"string\"); pm.expect(apiPayload.error.length > 0).to.equal(true); });",
+              "})();"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "TC18 - Delete student",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": "{{baseUrl}}/api/students/{{studentId}}",
+        "description": "Record removed from database. Run requests in numbered order. Capture your own evidence."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "(function () {",
+              "pm.test(\"TC18: status is 200\", function () { pm.response.to.have.status(200); });",
+              "pm.test(\"Response is JSON\", function () { pm.expect(pm.response.headers.get(\"Content-Type\").includes(\"application/json\")).to.equal(true); });",
+              "const apiPayload = pm.response.json();",
+              "pm.test(\"Deleted ID is correct\", function () { pm.expect(apiPayload.id).to.equal(Number(pm.collectionVariables.get(\"studentId\"))); pm.expect(apiPayload.message).to.equal(\"Student deleted successfully.\"); });",
+              "})();"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "TC19 - Get deleted student",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/students/{{studentId}}",
+        "description": "Deleted student cannot be retrieved. Run requests in numbered order. Capture your own evidence."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "(function () {",
+              "pm.test(\"TC19: status is 404\", function () { pm.response.to.have.status(404); });",
+              "pm.test(\"Response is JSON\", function () { pm.expect(pm.response.headers.get(\"Content-Type\").includes(\"application/json\")).to.equal(true); });",
+              "const apiPayload = pm.response.json();",
+              "pm.test(\"Error message is present\", function () { pm.expect(typeof apiPayload.error).to.equal(\"string\"); pm.expect(apiPayload.error.length > 0).to.equal(true); });",
+              "})();"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "TC20 - Delete already deleted student",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": "{{baseUrl}}/api/students/{{studentId}}",
+        "description": "Repeated deletion reports not found. Run requests in numbered order. Capture your own evidence."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "(function () {",
+              "pm.test(\"TC20: status is 404\", function () { pm.response.to.have.status(404); });",
+              "pm.test(\"Response is JSON\", function () { pm.expect(pm.response.headers.get(\"Content-Type\").includes(\"application/json\")).to.equal(true); });",
+              "const apiPayload = pm.response.json();",
+              "pm.test(\"Error message is present\", function () { pm.expect(typeof apiPayload.error).to.equal(\"string\"); pm.expect(apiPayload.error.length > 0).to.equal(true); });",
+              "})();"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "TC21 - Update deleted student",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/students/{{studentId}}",
+        "description": "Missing record cannot be updated. Run requests in numbered order. Capture your own evidence.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Ali Ahmed\",\n  \"rollNo\": \"{{rollNo}}\",\n  \"department\": \"Software Engineering\",\n  \"semester\": 2\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "(function () {",
+              "pm.test(\"TC21: status is 404\", function () { pm.response.to.have.status(404); });",
+              "pm.test(\"Response is JSON\", function () { pm.expect(pm.response.headers.get(\"Content-Type\").includes(\"application/json\")).to.equal(true); });",
+              "const apiPayload = pm.response.json();",
+              "pm.test(\"Error message is present\", function () { pm.expect(typeof apiPayload.error).to.equal(\"string\"); pm.expect(apiPayload.error.length > 0).to.equal(true); });",
+              "})();"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "TC22 - Confirm student absent from list",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/students",
+        "description": "JSON array excludes deleted student; other records remain. Run requests in numbered order. Capture your own evidence."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "(function () {",
+              "pm.test(\"TC22: status is 200\", function () { pm.response.to.have.status(200); });",
+              "pm.test(\"Response is JSON\", function () { pm.expect(pm.response.headers.get(\"Content-Type\").includes(\"application/json\")).to.equal(true); });",
+              "const apiPayload = pm.response.json();",
+              "pm.test(\"Deleted student absent\", function () { pm.expect(Array.isArray(apiPayload)).to.equal(true); pm.expect(apiPayload.some(s => s.id === Number(pm.collectionVariables.get(\"studentId\")))).to.equal(false); });",
+              "})();"
+            ]
+          }
+        }
+      ],
+      "response": []
+    }
+  ]
+}
